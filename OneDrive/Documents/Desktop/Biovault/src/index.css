@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-sans antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-2xl shadow-xl;
+  }
+
+  .glass-modal {
+    @apply bg-white/80 dark:bg-gray-900/90 backdrop-blur-2xl border border-white/50 dark:border-white/10 rounded-3xl shadow-2xl;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white
+      bg-gradient-to-r from-blue-500 to-emerald-500
+      hover:from-blue-400 hover:to-emerald-400
+      active:scale-95
+      transition-all duration-200
+      shadow-lg hover:shadow-blue-500/40
+      disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold
+      bg-biovault-primary dark:bg-biovault-primary-dark
+      text-biovault-navy dark:text-blue-300
+      hover:bg-blue-200 dark:hover:bg-blue-900/50
+      active:scale-95
+      transition-all duration-200
+      border border-blue-200 dark:border-blue-800;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium
+      text-biovault-slate dark:text-gray-400
+      hover:bg-gray-100 dark:hover:bg-white/5
+      active:scale-95
+      transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:scale-[1.02] hover:shadow-xl cursor-pointer;
+  }
+
+  .skeleton {
+    @apply bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700;
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  .fingerprint-glow {
+    animation: glowPulse 2s ease-in-out infinite;
+  }
+
+  .page-transition {
+    animation: fadeIn 0.5s ease-out, slideUp 0.5s ease-out;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent;
+  }
+
+  .bg-mesh {
+    background: radial-gradient(ellipse at top left, rgba(96, 165, 250, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(52, 211, 153, 0.15) 0%, transparent 50%);
+  }
+
+  .dark .bg-mesh {
+    background: radial-gradient(ellipse at top left, rgba(37, 99, 235, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(16, 185, 129, 0.15) 0%, transparent 50%);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(96, 165, 250, 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(96, 165, 250, 0.3);
+    border-radius: 4px;
+  }
+}
+
+/* Ripple ring animation */
+.ripple-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  animation: ripple 1.5s ease-out infinite;
+}
+
+.ripple-ring:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.ripple-ring:nth-child(3) {
+  animation-delay: 1s;
+}
+
+/* Fingerprint scanner line */
+.scanner-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #60A5FA, #34D399, transparent);
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.8);
+  animation: scan 2s ease-in-out infinite;
+}
+
+/* Checkmark animation */
+.checkmark-path {
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: draw 0.8s ease forwards;
+}
+
+/* Number counter */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom scrollbar for dark mode modal */
+.modal-scroll {
+  overflow-y: auto;
+  max-height: 85vh;
+}
+
+/* Gradient border trick */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(96,165,250,0.5), rgba(52,211,153,0.5));
+  z-index: -1;
+}
+
+/* Gas gauge */
+.gas-bar {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Bottom nav for mobile */
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+  }
+}
