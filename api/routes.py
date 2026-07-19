@@ -239,6 +239,16 @@ CHAT_PAGE = """<!doctype html>
             transition: transform 0.15s ease, opacity 0.15s ease;
         }
 
+        .ingest-btn {
+            background: linear-gradient(135deg, rgba(94,234,212,0.18), rgba(96,165,250,0.18));
+            border: 1px solid rgba(94,234,212,0.4);
+            color: #5eead4;
+            font-size: 13px;
+            padding: 10px 16px;
+        }
+        .ingest-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .ingest-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
         button:hover { transform: translateY(-1px); }
 
         .primary {
@@ -331,8 +341,9 @@ CHAT_PAGE = """<!doctype html>
                 <div class="actions">
                     <button class="primary" type="submit">Send</button>
                     <button class="secondary" type="button" id="clearBtn">Clear</button>
+                    <button class="ingest-btn" type="button" id="ingestBtn">⚡ Index Documents</button>
                 </div>
-                <div class="meta">This uses the existing <code>/ask</code> endpoint.</div>
+                <div class="meta" id="ingestStatus">This uses the <code>/ask</code> endpoint. Click <strong>Index Documents</strong> to load your PDFs into the database first.</div>
             </form>
 
             <details id="sourcesSection" hidden>
@@ -414,6 +425,37 @@ CHAT_PAGE = """<!doctype html>
             sourcesEl.innerHTML = '';
             statusEl.textContent = 'Ready';
             queryInput.focus();
+        });
+
+        const ingestBtn = document.getElementById('ingestBtn');
+        const ingestStatus = document.getElementById('ingestStatus');
+        ingestBtn.addEventListener('click', async () => {
+            ingestBtn.disabled = true;
+            ingestBtn.textContent = '⏳ Indexing…';
+            ingestStatus.innerHTML = '<span style="color:#5eead4">⏳ Indexing documents one by one — this may take 2–5 minutes. Do not close the tab.</span>';
+            statusEl.textContent = 'Indexing…';
+            try {
+                const res = await fetch('/ingest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const errs = data.errors && data.errors.length ? ` (${data.errors.length} errors)` : '';
+                    ingestStatus.innerHTML = `<span style="color:#5eead4">✅ Indexed <strong>${data.documents_indexed}</strong> documents, <strong>${data.chunks_created}</strong> chunks${errs}. You can now ask questions!</span>`;
+                    ingestBtn.textContent = '✅ Indexed';
+                    statusEl.textContent = `${data.chunks_created} chunks ready`;
+                } else {
+                    ingestStatus.innerHTML = `<span style="color:#fb7185">❌ Ingest failed: ${JSON.stringify(data)}</span>`;
+                    ingestBtn.disabled = false;
+                    ingestBtn.textContent = '⚡ Index Documents';
+                }
+            } catch (err) {
+                ingestStatus.innerHTML = `<span style="color:#fb7185">❌ Error: ${err.message}</span>`;
+                ingestBtn.disabled = false;
+                ingestBtn.textContent = '⚡ Index Documents';
+            }
         });
     </script>
 </body>
@@ -634,19 +676,59 @@ def embeddings_api() -> dict[str, object]:
 
 @app.post("/ingest")
 def ingest(request: IngestRequest) -> dict[str, object]:
-    chunks = ingest_data_root(
-        data_root=request.data_root or DATA_ROOT,
-        model_name=request.model_name,
-        chunk_size=request.chunk_size,
-        chunk_overlap=request.chunk_overlap,
-        qdrant_store=get_qdrant_store(),
-        embedding_service=get_embedding_service(model_name=request.model_name),
-    )
+    """
+    Index documents from the data directory into Qdrant.
+    Processes ONE file at a time to stay within Render's 512MB RAM limit.
+    """
+    from loaders import discover_documents, load_pdf_documents, load_markdown_documents, load_docx_documents, load_text_documents
+    from chunking.chunker import Chunker
+
+    data_root = request.data_root or DATA_ROOT
+    store = get_qdrant_store()
+    embedding_svc = get_embedding_service(model_name=request.model_name)
+    chunker = Chunker(chunk_size=request.chunk_size, overlap=request.chunk_overlap)
+
+    total_docs = 0
+    total_chunks = 0
+    errors = []
+
+    for path in discover_documents(data_root):
+        try:
+            suffix = path.suffix.lower()
+            if suffix == ".pdf":
+                docs = load_pdf_documents(path, data_root)
+            elif suffix in {".md", ".markdown"}:
+                docs = load_markdown_documents(path, data_root)
+            elif suffix == ".docx":
+                docs = load_docx_documents(path, data_root)
+            else:
+                docs = load_text_documents(path, data_root)
+
+            file_chunks = []
+            for doc in docs:
+                file_chunks.extend(chunker.chunk_document(doc))
+
+            if not file_chunks:
+                continue
+
+            # Embed this file's chunks only — keeps peak RAM low
+            embeddings = embedding_svc.embed_documents([c.text for c in file_chunks])
+            store.upsert_chunks(file_chunks, embeddings)
+
+            total_docs += 1
+            total_chunks += len(file_chunks)
+            print(f"[ingest] Indexed {path.name}: {len(file_chunks)} chunks")
+
+        except Exception as e:
+            errors.append({"file": str(path.name), "error": str(e)})
+            print(f"[ingest] Error on {path.name}: {e}")
+
     return {
         "status": "completed",
         "model_name": request.model_name,
-        "documents_indexed": len({chunk.relative_path for chunk in chunks}),
-        "chunks_created": len(chunks),
+        "documents_indexed": total_docs,
+        "chunks_created": total_chunks,
+        "errors": errors,
     }
 
 
