@@ -1,0 +1,20 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+
+# Don't commit the Qdrant lock file (Render uses persistent disk)
+vector_db/qdrant/.lock
+
+# Don't commit large local data — upload via the API instead
+# (comment these out if you want to ship documents inside the image)
+# data/pdfs/
+# data/text/
+# data/markdown/
