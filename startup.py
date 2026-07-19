@@ -1,18 +1,29 @@
 """
 startup.py — runs once on container boot before uvicorn starts.
-Ingests any documents in the data/ directory into Qdrant.
-If Qdrant already has data (persistent disk), ingestion is skipped.
+
+On Render's free tier (512MB RAM, ephemeral disk) we skip automatic ingestion
+at startup to avoid OOM errors from embedding large document batches.
+Documents can be re-ingested via the /api/ingest endpoint after the server is live.
+
+If you have a persistent disk attached, set the environment variable
+AUTO_INGEST=true to enable automatic ingestion on boot.
 """
+import os
 import sys
 from pathlib import Path
 
-# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from vector_db.qdrant_service import get_qdrant_store
-from config.settings import QDRANT_COLLECTION_NAME
-
 def main():
+    auto_ingest = os.environ.get("AUTO_INGEST", "false").lower() == "true"
+    if not auto_ingest:
+        print("[startup] AUTO_INGEST not set — skipping ingestion. Server will start immediately.")
+        print("[startup] Use the /api/ingest endpoint to index your documents after the server is live.")
+        return
+
+    from vector_db.qdrant_service import get_qdrant_store
+    from config.settings import QDRANT_COLLECTION_NAME
+
     print("[startup] Checking vector database...")
     store = get_qdrant_store()
 
