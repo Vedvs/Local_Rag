@@ -32,6 +32,11 @@ RUN mkdir -p vector_db/qdrant data/pdfs data/markdown data/text
 ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
 
+# Force ONNX Runtime to use system allocators and single-threading to prevent OOM crashes on 512MB RAM
+ENV ORT_USE_ENV_ALLOCATORS=1
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+
 # ── expose port ───────────────────────────────────────────────────────────────
 EXPOSE 8000
 
