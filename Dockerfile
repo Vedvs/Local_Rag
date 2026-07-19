@@ -27,9 +27,10 @@ RUN mkdir -p vector_db/qdrant data/pdfs data/markdown data/text
 ENV HF_HUB_OFFLINE=1
 ENV TRANSFORMERS_OFFLINE=1
 ENV PORT=8000
+ENV PYTHONUNBUFFERED=1
 
 # ── expose port ───────────────────────────────────────────────────────────────
 EXPOSE 8000
 
 # ── startup: run ingest then serve ────────────────────────────────────────────
-CMD ["sh", "-c", "python startup.py && uvicorn main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "python startup.py; python -m uvicorn main:app --host 0.0.0.0 --port $PORT"]
