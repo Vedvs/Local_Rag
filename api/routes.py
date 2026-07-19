@@ -20,35 +20,10 @@ app = FastAPI(title="Local RAG", version="2.0.0")
 
 @app.on_event("startup")
 def startup_event():
-    import threading
-    from config.settings import QDRANT_COLLECTION_NAME
-
-    def run_ingest_in_background():
-        print("[background-startup] Checking vector database...")
-        try:
-            store = get_qdrant_store()
-            try:
-                info = store.client.get_collection(QDRANT_COLLECTION_NAME)
-                count = info.points_count or 0
-            except Exception:
-                count = 0
-
-            if count > 0:
-                print(f"[background-startup] Qdrant already has {count} chunks — skipping ingestion.")
-                return
-
-            print("[background-startup] No chunks found — running ingestion in background...")
-            from ingestion.ingest import ingest_data_root
-            chunks = ingest_data_root(
-                qdrant_store=store,
-                embedding_service=get_embedding_service(model_name=EMBEDDING_MODEL_NAME)
-            )
-            docs = len({chunk.relative_path for chunk in chunks})
-            print(f"[background-startup] Done. Indexed {docs} documents, {len(chunks)} chunks.")
-        except Exception as e:
-            print(f"[background-startup] Error during background ingestion: {e}")
-
-    threading.Thread(target=run_ingest_in_background, daemon=True).start()
+    # Auto-ingestion is disabled to prevent OOM crashes on Render's free tier (512MB).
+    # The background thread was embedding all PDFs at once which exceeded memory limits.
+    # Use the POST /api/ingest endpoint to trigger ingestion manually after the server is live.
+    print("[startup] Server ready. Use POST /api/ingest to index your documents.")
 
 
 CHAT_PAGE = """<!doctype html>
