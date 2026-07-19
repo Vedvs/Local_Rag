@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+qdrant-client
+pymupdf
+markdown
+python-docx
+langchain-text-splitters
+fastembed
+ollama
+groq
+scikit-learn
+python-dotenv
