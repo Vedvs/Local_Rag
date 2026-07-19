@@ -10,8 +10,12 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Don't commit the Qdrant lock file (Render uses persistent disk)
-vector_db/qdrant/.lock
+# Exclude ALL local Qdrant data — the container always starts with a fresh DB.
+# Old vectors are incompatible if the embedding model/dimensions changed.
+vector_db/qdrant/
+
+# Exclude the pre-embedded chunks JSONL (will be regenerated inside container)
+vector_db/embedded_chunks.jsonl
 
 # Don't commit large local data — upload via the API instead
 # (comment these out if you want to ship documents inside the image)
