@@ -13,9 +13,13 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# ── set cache path BEFORE downloading so the model lands in a known location ──
+# This ensures the same path is used at both build time and runtime.
+ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
+
 # ── pre-download the ONNX embedding model into the image ─────────────────────
 # fastembed uses ONNX Runtime — no PyTorch or CUDA required.
-# Model is ~65 MB total and is cached at build time so no network needed at runtime.
+# Model (~65MB) is baked into the image so no network access is needed at runtime.
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
 
 # ── copy application source ───────────────────────────────────────────────────
