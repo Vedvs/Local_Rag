@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 
 @dataclass(frozen=True)
 class EmbeddingConfig:
-    model_name: str = "BAAI/bge-large-en-v1.5"
+    model_name: str = "BAAI/bge-small-en-v1.5"
     batch_size: int = 32
     normalize_embeddings: bool = True
 
