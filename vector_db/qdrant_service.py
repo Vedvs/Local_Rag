@@ -19,7 +19,28 @@ class QdrantChunkStore:
     def ensure_collection(self, vector_size: int) -> None:
         existing = {collection.name for collection in self.client.get_collections().collections}
         if self.collection_name in existing:
-            return
+            try:
+                info = self.client.get_collection(self.collection_name)
+                # Extract vector size from VectorParams or dict
+                current_size = None
+                config = getattr(info, "config", None)
+                params = getattr(config, "params", None) if config else None
+                vectors = getattr(params, "vectors", None) if params else None
+                
+                if vectors:
+                    if hasattr(vectors, "size"):
+                        current_size = vectors.size
+                    elif isinstance(vectors, dict) and "size" in vectors:
+                        current_size = vectors["size"]
+                
+                if current_size == vector_size:
+                    return
+                
+                print(f"[Qdrant] Dimension mismatch (existing: {current_size}, new: {vector_size}). Recreating collection.")
+                self.client.delete_collection(self.collection_name)
+            except Exception as e:
+                print(f"[Qdrant] Error checking collection size: {e}. Recreating collection.")
+                self.client.delete_collection(self.collection_name)
 
         self.client.create_collection(
             collection_name=self.collection_name,

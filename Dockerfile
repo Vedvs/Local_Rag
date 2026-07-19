@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt scikit-learn python-dotenv
 
 # ── pre-download the embedding model into the image ──────────────────────────
 # This avoids needing network access at runtime and speeds up cold starts.
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-large-en-v1.5')"
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
 
 # ── copy application source ───────────────────────────────────────────────────
 COPY . .
