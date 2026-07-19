@@ -17,7 +17,7 @@ class EmbeddingService:
 
     def __init__(self, config: EmbeddingConfig | None = None, device: str | None = None) -> None:
         self.config = config or EmbeddingConfig()
-        self.model = TextEmbedding(self.config.model_name, threads=1)
+        self.model = TextEmbedding(self.config.model_name, threads=1, enable_cpu_mem_arena=False)
 
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
         cleaned_texts = [text.strip() for text in texts if text and text.strip()]
