@@ -711,13 +711,19 @@ def ingest(request: IngestRequest) -> dict[str, object]:
             if not file_chunks:
                 continue
 
-            # Embed this file's chunks only — keeps peak RAM low
-            embeddings = embedding_svc.embed_documents([c.text for c in file_chunks])
-            store.upsert_chunks(file_chunks, embeddings)
+            # Embed and upsert in small batches of 16 to keep memory very low (prevent OOM)
+            batch_size = 16
+            for idx in range(0, len(file_chunks), batch_size):
+                chunk_batch = file_chunks[idx : idx + batch_size]
+                embeddings = embedding_svc.embed_documents([c.text for c in chunk_batch])
+                store.upsert_chunks(chunk_batch, embeddings)
 
             total_docs += 1
             total_chunks += len(file_chunks)
             print(f"[ingest] Indexed {path.name}: {len(file_chunks)} chunks")
+            
+            import gc
+            gc.collect()
 
         except Exception as e:
             errors.append({"file": str(path.name), "error": str(e)})
