@@ -33,4 +33,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
 # ── startup: run ingest then serve ────────────────────────────────────────────
-CMD ["sh", "-c", "python startup.py; python -m uvicorn main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "python -m uvicorn main:app --host 0.0.0.0 --port $PORT"]
