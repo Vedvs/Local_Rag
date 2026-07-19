@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import hashlib
-
-from transformers import AutoTokenizer
+import re
 
 from config.settings import CHUNK_OVERLAP, CHUNK_SIZE, EMBEDDING_MODEL_NAME
 from models.document import ChunkRecord, SourceDocument
+
+# Lightweight word-boundary chunker — avoids importing PyTorch/transformers.
+# ~4 chars per token is a standard approximation for English text.
+_CHARS_PER_TOKEN = 4
 
 
 class Chunker:
@@ -15,13 +18,19 @@ class Chunker:
         chunk_size: int = CHUNK_SIZE,
         overlap: int = CHUNK_OVERLAP,
     ) -> None:
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-        self.chunk_size = chunk_size
-        self.overlap = overlap
+        # chunk_size / overlap are in tokens; convert to approx chars
+        self.chunk_chars = chunk_size * _CHARS_PER_TOKEN
+        self.overlap_chars = overlap * _CHARS_PER_TOKEN
 
-    def _chunk_token_ids(self, token_ids: list[int]) -> list[list[int]]:
-        step = max(1, self.chunk_size - self.overlap)
-        return [token_ids[start : start + self.chunk_size] for start in range(0, len(token_ids), step)]
+    def _chunk_words(self, text: str) -> list[str]:
+        """Split text into overlapping chunks of ~chunk_chars characters."""
+        chunks: list[str] = []
+        step = max(1, self.chunk_chars - self.overlap_chars)
+        start = 0
+        while start < len(text):
+            chunks.append(text[start : start + self.chunk_chars])
+            start += step
+        return chunks
 
     @staticmethod
     def _infer_section(text: str) -> str:
@@ -36,14 +45,14 @@ class Chunker:
         return hashlib.sha1(f"{source_path}:{chunk_index}:{text}".encode("utf-8")).hexdigest()
 
     def chunk_document(self, document: SourceDocument) -> list[ChunkRecord]:
-        token_ids = self.tokenizer.encode(document.text, add_special_tokens=False)
-        if not token_ids:
+        if not document.text or not document.text.strip():
             return []
 
+        raw_chunks = self._chunk_words(document.text)
         chunks: list[ChunkRecord] = []
         section = self._infer_section(document.text) or document.section or document.title or document.filename
-        for chunk_index, chunk_tokens in enumerate(self._chunk_token_ids(token_ids)):
-            chunk_text = self.tokenizer.decode(chunk_tokens, skip_special_tokens=True).strip()
+        for chunk_index, chunk_text in enumerate(raw_chunks):
+            chunk_text = chunk_text.strip()
             if not chunk_text:
                 continue
 

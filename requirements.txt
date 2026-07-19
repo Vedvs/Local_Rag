@@ -5,9 +5,8 @@ pymupdf
 markdown
 python-docx
 langchain-text-splitters
-sentence-transformers
+fastembed
 ollama
-transformers
 groq
 scikit-learn
 python-dotenv
