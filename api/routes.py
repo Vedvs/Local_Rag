@@ -768,7 +768,12 @@ def ask(request: AskRequest) -> dict[str, object]:
     retriever = Retriever(model_name=request.embedding_model_name)
     matches = retriever.search(request.query, limit=request.limit, folder=request.folder)
     prompt = build_prompt(request.query, matches)
-    answer = OllamaService(OllamaConfig(model_name=request.ollama_model_name)).generate(prompt)
+    
+    try:
+        answer = OllamaService(OllamaConfig(model_name=request.ollama_model_name)).generate(prompt)
+    except Exception as e:
+        answer = f"⚠️ LLM Error: {str(e)}\n\n(Tip: If this is on Render, make sure you have added the `GROQ_API_KEY` environment variable in your service settings.)"
+        
     return {
         "query": request.query,
         "answer": answer,
