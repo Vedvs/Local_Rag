@@ -21,7 +21,6 @@ class QdrantChunkStore:
         if self.collection_name in existing:
             try:
                 info = self.client.get_collection(self.collection_name)
-                # Extract vector size from VectorParams or dict
                 current_size = None
                 config = getattr(info, "config", None)
                 params = getattr(config, "params", None) if config else None
@@ -36,11 +35,22 @@ class QdrantChunkStore:
                 if current_size == vector_size:
                     return
                 
-                print(f"[Qdrant] Dimension mismatch (existing: {current_size}, new: {vector_size}). Recreating collection.")
-                self.client.delete_collection(self.collection_name)
+                print(f"[Qdrant] Dimension mismatch (existing: {current_size}, new: {vector_size}). Clearing vector database folder.")
+                self.client.close()
+                import shutil
+                if self.storage_path.exists():
+                    shutil.rmtree(self.storage_path)
+                self.client = QdrantClient(path=str(self.storage_path))
             except Exception as e:
-                print(f"[Qdrant] Error checking collection size: {e}. Recreating collection.")
-                self.client.delete_collection(self.collection_name)
+                print(f"[Qdrant] Error checking collection size: {e}. Recreating folder.")
+                try:
+                    self.client.close()
+                except Exception:
+                    pass
+                import shutil
+                if self.storage_path.exists():
+                    shutil.rmtree(self.storage_path)
+                self.client = QdrantClient(path=str(self.storage_path))
 
         self.client.create_collection(
             collection_name=self.collection_name,
