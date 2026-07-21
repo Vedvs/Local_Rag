@@ -94,35 +94,82 @@ SHA-256 deduplication
 Query caching
 Smart short-document optimization
 
-                User Uploads
-                     │
-                     ▼
-          Document Discovery
-                     │
-                     ▼
-            SHA-256 Deduplication
-                     │
-                     ▼
-          Semantic Chunk Generation
-                     │
-                     ▼
-      FastEmbed Embedding Generation
-                     │
-        ┌────────────┴────────────┐
-        ▼                         ▼
-   Qdrant Vector DB          BM25 Index
-        │                         │
-        └────────────┬────────────┘
-                     ▼
-        Reciprocal Rank Fusion
-                     ▼
-      Cross Encoder Re-Ranker
-                     ▼
-      Grounded Prompt Builder
-                     ▼
-          Ollama / Groq LLM
-                     ▼
-             Final Response
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+
+    %% ===============================
+    %% Data Sources
+    %% ===============================
+
+    A[📄 PDF]
+    B[📝 DOCX]
+    C[📑 Markdown]
+    D[📃 TXT]
+    E[🌐 Website URLs]
+
+    %% ===============================
+    %% Ingestion
+    %% ===============================
+
+    A --> F
+    B --> F
+    C --> F
+    D --> F
+    E --> F
+
+    F[Document Ingestion Pipeline]
+
+    F --> G[SHA-256 Deduplication]
+
+    G -->|New or Updated| H[Text Extraction]
+    G -->|Already Indexed| X[Skip Processing]
+
+    H --> I[Semantic Chunking]
+
+    I --> J[Metadata Injection<br/>Tenant ID • Permissions • Source • Offsets]
+
+    J --> K[FastEmbed Embedding Generation]
+
+    K --> L[(Qdrant Vector Database)]
+    J --> M[(BM25 Keyword Index)]
+
+    %% ===============================
+    %% Query Pipeline
+    %% ===============================
+
+    U[👤 User Query]
+
+    U --> N[Permission Validation]
+
+    N --> O[Dense Vector Search]
+
+    O --> L
+
+    N --> P[Sparse BM25 Search]
+
+    P --> M
+
+    L --> Q[Top-K Dense Results]
+
+    M --> R[Top-K Sparse Results]
+
+    Q --> S[Reciprocal Rank Fusion]
+
+    R --> S
+
+    S --> T[Cross Encoder Re-Ranking]
+
+    T --> V[Top Relevant Context]
+
+    V --> W[Prompt Construction]
+
+    W --> Y[Ollama / Groq LLM]
+
+    Y --> Z[Grounded Response with Citations]
+
+```
 
 
 🛠 Tech Stack
@@ -150,33 +197,72 @@ Markdown
 Caching
 In-memory FIFO Cache
 
+## 📂 Project Structure
+
+```text
 Local-RAG/
 │
+├── app.py                     # Main application entry point
+├── config.py                  # Project configuration
+├── requirements.txt
+├── README.md
+│
 ├── data/
-│   ├── uploads/
-│   ├── processed/
-│
-├── embeddings/
-│
-├── qdrant/
-│
-├── cache/
+│   ├── uploads/               # Uploaded documents
+│   ├── scraped/               # Scraped webpages
+│   ├── processed/             # Processed text files
+│   └── cache/
 │
 ├── ingestion/
+│   ├── loaders.py             # PDF, DOCX, TXT, MD loaders
+│   ├── scraper.py             # Website scraping
+│   ├── hashing.py             # SHA-256 deduplication
+│   ├── chunker.py             # Semantic chunking
+│   └── metadata.py            # Metadata generation
+│
+├── embeddings/
+│   ├── embedder.py            # FastEmbed integration
+│   └── models/
+│
+├── vectorstore/
+│   ├── qdrant.py              # Qdrant operations
+│   ├── bm25.py                # BM25 indexing
+│   └── indexing.py
 │
 ├── retrieval/
+│   ├── dense_search.py
+│   ├── sparse_search.py
+│   ├── rrf.py                 # Reciprocal Rank Fusion
+│   ├── reranker.py            # Cross Encoder
+│   └── retrieval_pipeline.py
 │
-├── reranker/
+├── llm/
+│   ├── prompt_builder.py
+│   ├── ollama.py
+│   └── groq.py
 │
-├── models/
+├── security/
+│   ├── permissions.py
+│   ├── tenant_filter.py
+│   └── authentication.py
+│
+├── cache/
+│   └── query_cache.py
 │
 ├── utils/
+│   ├── logger.py
+│   ├── helpers.py
+│   └── constants.py
 │
-├── app.py
-├── requirements.txt
-└── README.md
+├── static/
+│
+├── templates/
+│
+└── images/                    # README screenshots
+```
 
 ⚙️ Installation
+
 git clone https://github.com/yourusername/local-rag.git
 
 cd local-rag
@@ -198,17 +284,33 @@ Run the application.
 python app.py
 
 📊 Comparison with Traditional RAG
-Feature	Traditional RAG	Local RAG
-Local Execution	❌	✅
-Hybrid Search	❌	✅
-Semantic Chunking	❌	✅
-BM25 Retrieval	❌	✅
-Cross Encoder	❌	✅
-Multi-Tenant Support	❌	✅
-Permission Filtering	❌	✅
-Query Cache	❌	✅
-SHA-256 Deduplication	❌	✅
-Character-Level Citations	❌	✅
+## 📊 Comparison with Traditional RAG Systems
+
+| Feature | Traditional RAG | Local RAG |
+|----------|-----------------|-----------|
+| Deployment | Cloud-based | Fully Local |
+| Data Privacy | Documents sent to external APIs | Data never leaves local machine |
+| Embedding Model | OpenAI / API-based | FastEmbed (ONNX) |
+| Vector Database | Pinecone / FAISS | Qdrant |
+| Search Method | Dense Vector Search | Hybrid Search (Dense + BM25) |
+| Keyword Retrieval | ❌ | ✅ |
+| Semantic Retrieval | ✅ | ✅ |
+| Hybrid Retrieval | ❌ | ✅ |
+| Rank Fusion | ❌ | Reciprocal Rank Fusion (RRF) |
+| Re-ranking | Rarely Used | ONNX Cross Encoder |
+| Semantic Chunking | Fixed-size chunks | Dynamic Semantic Chunking |
+| Document Deduplication | ❌ | SHA-256 Hashing |
+| Multi-threaded Indexing | ❌ | ✅ |
+| Query Cache | ❌ | FIFO In-Memory Cache |
+| Multi-Tenant Support | ❌ | ✅ |
+| Role-Based Access Control | ❌ | ✅ |
+| Exact Character Citations | ❌ | ✅ |
+| Website Ingestion | Limited | Built-in |
+| Multi-file Upload | Basic | Drag-and-Drop |
+| Offline Support | Limited | Fully Offline |
+| Cost | API Charges | Free Local Execution |
+| Enterprise Ready | Partial | Yes |
+
 📈 Future Improvements
 Multi-modal document retrieval
 Image understanding
@@ -220,26 +322,11 @@ Agentic RAG workflows
 Fine-tuned embedding models
 📸 Implementation
 User Interface
+<img width="1817" height="902" alt="image" src="https://github.com/user-attachments/assets/5ed6836c-97e3-4a6b-8e60-277a71bd9ea2" />
+<img width="767" height="790" alt="image" src="https://github.com/user-attachments/assets/092182bc-0845-4d47-8964-7b393a4b1b7a" />
 
-Add screenshots of the application's main interface here.
 
-![Home Screen](images/home.png)
-Document Upload
-![Document Upload](images/upload.png)
-Website URL Ingestion
-![Website Ingestion](images/url_ingestion.png)
-Semantic Chunking
-![Semantic Chunking](images/chunking.png)
-Hybrid Retrieval Pipeline
-![Hybrid Search](images/retrieval.png)
-Query Results
-![Generated Response](images/results.png)
-Citation Output
-![Citation Example](images/citations.png)
-Multi-Tenant Access Control
-![Permissions](images/security.png)
-Performance Metrics
-![Performance](images/performance.png)
+
 📚 References
 Retrieval-Augmented Generation (RAG)
 Qdrant Vector Database
@@ -249,11 +336,13 @@ Reciprocal Rank Fusion (RRF)
 ONNX Runtime
 MiniLM Cross Encoder
 Ollama
+
+
 🤝 Contributing
 
 Contributions, feature requests, and bug reports are welcome. Feel free to fork the repository and submit pull requests.
 
-📄 License
+
 
 This project is licensed under the MIT License.
 
